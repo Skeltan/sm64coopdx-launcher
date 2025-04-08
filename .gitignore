@@ -1,3 +1,6 @@
 # Ignorer les fichiers compilés Python
 __pycache__/
 *.pyc
+
+# Ignorer le dossier versions et son contenu
+versions/

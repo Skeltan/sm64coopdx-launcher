@@ -4,6 +4,7 @@ from tkinter import ttk
 import requests
 import os
 import zipfile
+import subprocess
 from utils.file_manager import FileManager
 from utils.github_manager import GitHubManager
 
@@ -11,38 +12,84 @@ class AppWindow:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("sm64coopdx Launcher")
-        self.root.geometry("400x300")
+        self.root.geometry("400x400")
 
-        # Add basic UI elements
+        # Label principal
         self.label = tk.Label(self.root, text="Welcome to sm64coopdx Launcher!")
         self.label.pack(pady=10)
 
+        # Drop-down list pour les versions installées
+        self.version_combobox = ttk.Combobox(self.root, state="readonly")
+        self.version_combobox.pack(pady=10, padx=10, fill=tk.X)
+
+        # Bouton pour lancer une version (désactivé par défaut)
+        self.launch_button = tk.Button(self.root, text="Launch Version", state=tk.DISABLED, command=self.launch_version)
+        self.launch_button.pack(pady=5)
+
+        # Bouton pour télécharger une version
         self.download_button = tk.Button(self.root, text="Download Version", command=self.download_version)
         self.download_button.pack(pady=5)
 
-        self.list_button = tk.Button(self.root, text="List Versions", command=self.list_versions)
-        self.list_button.pack(pady=5)
+        # Bouton pour rafraîchir la liste des versions
+        self.refresh_button = tk.Button(self.root, text="Refresh Versions", command=self.refresh_versions)
+        self.refresh_button.pack(pady=5)
 
-        self.remove_button = tk.Button(self.root, text="Remove Version", command=self.remove_version)
-        self.remove_button.pack(pady=5)
+        # Charger les versions installées au démarrage
+        self.refresh_versions()
 
-    def run(self):
-        self.root.mainloop()
+        # Lier la sélection dans la Combobox à l'activation du bouton "Launch"
+        self.version_combobox.bind("<<ComboboxSelected>>", self.on_version_select)
 
-    def list_versions(self):
-        versions = FileManager.list_versions("versions")  # Utilise le dossier 'versions'
+    def refresh_versions(self):
+        """Met à jour la liste des versions installées."""
+        versions_directory = "versions"
+
+        if not os.path.exists(versions_directory):
+            os.makedirs(versions_directory)
+
+        # Parcourir les sous-dossiers dans "versions"
+        versions = []
+        for version in os.listdir(versions_directory):
+            version_path = os.path.join(versions_directory, version)
+            if os.path.isdir(version_path):
+                exe_file = os.path.join(version_path, "sm64coopdx.exe")  # Nom fixe du fichier .exe
+                if os.path.exists(exe_file):  # Vérifier si le fichier .exe existe
+                    versions.append(version)
+
+        # Mettre à jour la Combobox avec les versions trouvées
+        self.version_combobox["values"] = versions
         if versions:
-            messagebox.showinfo("Versions", "\n".join(versions))
+            self.version_combobox.current(0)  # Sélectionner la première version par défaut
+            self.launch_button.config(state=tk.NORMAL)
         else:
-            messagebox.showinfo("Versions", "No versions found.")
+            self.version_combobox.set("")  # Réinitialiser la sélection
+            self.launch_button.config(state=tk.DISABLED)
 
-    def remove_version(self):
-        version_name = "example_version"  # Replace with user input
-        success = FileManager.delete_version("versions", version_name)
-        if success:
-            messagebox.showinfo("Remove", f"Version '{version_name}' removed successfully.")
+    def on_version_select(self, event):
+        """Active le bouton 'Launch Version' lorsqu'une version est sélectionnée."""
+        if self.version_combobox.get():
+            self.launch_button.config(state=tk.NORMAL)
         else:
-            messagebox.showerror("Remove", f"Version '{version_name}' not found.")
+            self.launch_button.config(state=tk.DISABLED)
+
+    def launch_version(self):
+        """Lance la version sélectionnée en exécutant son fichier .exe."""
+        selected_version = self.version_combobox.get()
+        if not selected_version:
+            messagebox.showerror("Error", "Please select a version to launch.")
+            return
+
+        # Utiliser le nom fixe "sm64coopdx.exe"
+        exe_path = os.path.join("versions", selected_version, "sm64coopdx.exe")
+
+        if os.path.exists(exe_path):
+            try:
+                subprocess.Popen([exe_path], shell=True)  # Lancer l'exécutable
+                messagebox.showinfo("Success", f"Launching '{selected_version}'...")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to launch '{selected_version}'.\n{e}")
+        else:
+            messagebox.showerror("Error", f"Executable not found for version '{selected_version}'.")
 
     def download_version(self):
         releases = GitHubManager.get_releases()
@@ -191,3 +238,6 @@ class AppWindow:
 
         # Associer la fonction de téléchargement au bouton Download
         download_button.config(command=download_selected_file)
+
+    def run(self):
+        self.root.mainloop()
