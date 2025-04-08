@@ -66,13 +66,17 @@ class AppWindow:
                     versions.append(version)
 
         # Mettre à jour la Combobox avec les versions trouvées
-        self.version_combobox["values"] = versions
         if versions:
+            self.version_combobox["values"] = versions
             self.version_combobox.current(0)  # Sélectionner la première version par défaut
             self.launch_button.config(state=tk.NORMAL)
+            self.delete_button.config(state=tk.NORMAL)
         else:
-            self.version_combobox.set("")  # Réinitialiser la sélection
+            # Afficher un message par défaut si aucune version n'est installée
+            self.version_combobox["values"] = ["No versions of sm64coopdx installed"]
+            self.version_combobox.set("No versions of sm64coopdx installed")
             self.launch_button.config(state=tk.DISABLED)
+            self.delete_button.config(state=tk.DISABLED)
 
     def on_version_select(self, event):
         """Active les boutons 'Launch Version' et 'Delete Version' lorsqu'une version est sélectionnée."""
