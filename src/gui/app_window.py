@@ -7,6 +7,7 @@ import zipfile
 import subprocess
 from utils.file_manager import FileManager
 from utils.github_manager import GitHubManager
+from config import LAUNCHER_VERSION
 
 class AppWindow:
     def __init__(self):
@@ -33,6 +34,10 @@ class AppWindow:
         # Bouton pour rafraîchir la liste des versions
         self.refresh_button = tk.Button(self.root, text="Refresh Versions", command=self.refresh_versions)
         self.refresh_button.pack(pady=5)
+
+        # Afficher la version du launcher
+        self.version_label = tk.Label(self.root, text=f"Launcher Version: {LAUNCHER_VERSION}")
+        self.version_label.pack(pady=5)
 
         # Charger les versions installées au démarrage
         self.refresh_versions()
