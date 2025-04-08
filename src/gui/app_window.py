@@ -233,6 +233,12 @@ class AppWindow:
                 else:
                     messagebox.showerror("Error", f"Failed to download file '{file_name}'.")
 
+                # Fermer la fenêtre de téléchargement
+                selection_window.destroy()
+
+                # Rafraîchir la liste des versions
+                self.refresh_versions()
+
             perform_download()
 
         # Lier l'événement de sélection à la mise à jour des fichiers ZIP
