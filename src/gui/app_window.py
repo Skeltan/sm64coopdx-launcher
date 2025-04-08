@@ -6,6 +6,7 @@ import zipfile
 import requests
 from utils.github_manager import GitHubManager
 from config import LAUNCHER_VERSION
+from PIL import Image, ImageTk
 
 class AppWindow:
     def __init__(self):
@@ -40,6 +41,21 @@ class AppWindow:
         # Label principal
         label = tk.Label(self.launch_tab, text="Welcome to sm64coopdx Launcher!", font=("Arial", 16))
         label.pack(pady=20)
+
+        # Charger et redimensionner le logo avec Pillow
+        logo_path = os.path.join("res", "img", "logo.png")
+        if os.path.exists(logo_path):
+            try:
+                pil_image = Image.open(logo_path)  # Charger l'image avec Pillow
+                resized_image = pil_image.resize((512, 256), Image.Resampling.LANCZOS)  # Redimensionner l'image (150x150 pixels)
+                self.logo_image = ImageTk.PhotoImage(resized_image)  # Convertir pour Tkinter
+                logo_label = tk.Label(self.launch_tab, image=self.logo_image)
+                logo_label.pack(pady=10)  # Placer le logo sous le texte "Welcome"
+            except Exception as e:
+                print(f"Error loading logo: {e}")
+                messagebox.showerror("Error", f"Failed to load the logo image.\nDetails: {e}")
+        else:
+            messagebox.showerror("Error", f"Logo file not found: {logo_path}")
 
         # Conteneur pour les widgets en bas
         bottom_frame = tk.Frame(self.launch_tab)
