@@ -1,11 +1,9 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog
-from tkinter import ttk
-import requests
+from tkinter import ttk, messagebox
 import os
-import zipfile
 import subprocess
-from utils.file_manager import FileManager
+import zipfile
+import requests
 from utils.github_manager import GitHubManager
 from config import LAUNCHER_VERSION
 
@@ -13,41 +11,83 @@ class AppWindow:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("sm64coopdx Launcher")
-        self.root.geometry("400x400")
+        self.root.geometry("800x600")
+        self.root.minsize(450, 400)
 
-        # Label principal
-        self.label = tk.Label(self.root, text="Welcome to sm64coopdx Launcher!")
-        self.label.pack(pady=10)
+        # Création du Notebook pour les onglets
+        notebook = ttk.Notebook(self.root)
+        notebook.pack(fill=tk.BOTH, expand=True)
 
-        # Drop-down list pour les versions installées
-        self.version_combobox = ttk.Combobox(self.root, state="readonly")
-        self.version_combobox.pack(pady=10, padx=10, fill=tk.X)
+        # Onglet "Launch Game"
+        self.launch_tab = tk.Frame(notebook)
+        notebook.add(self.launch_tab, text="Launch Game")
 
-        # Bouton pour lancer une version (désactivé par défaut)
-        self.launch_button = tk.Button(self.root, text="Launch Version", state=tk.DISABLED, command=self.launch_version)
-        self.launch_button.pack(pady=5)
+        # Onglet "Manage Versions"
+        self.manage_tab = tk.Frame(notebook)
+        notebook.add(self.manage_tab, text="Manage Versions")
 
-        # Bouton pour télécharger une version
-        self.download_button = tk.Button(self.root, text="Download Version", command=self.download_version)
-        self.download_button.pack(pady=5)
+        # Contenu de l'onglet "Launch Game"
+        self.setup_launch_tab()
 
-        # Bouton pour supprimer une version (désactivé par défaut)
-        self.delete_button = tk.Button(self.root, text="Delete Version", state=tk.DISABLED, command=self.delete_version)
-        self.delete_button.pack(pady=5)
-
-        # Bouton pour rafraîchir la liste des versions
-        self.refresh_button = tk.Button(self.root, text="Refresh Versions", command=self.refresh_versions)
-        self.refresh_button.pack(pady=5)
-
-        # Afficher la version du launcher
-        self.version_label = tk.Label(self.root, text=f"Launcher Version: {LAUNCHER_VERSION}")
-        self.version_label.pack(pady=5)
+        # Contenu de l'onglet "Manage Versions"
+        self.setup_manage_tab()
 
         # Charger les versions installées au démarrage
         self.refresh_versions()
 
-        # Lier la sélection dans la Combobox à l'activation des boutons "Launch" et "Delete"
+    def setup_launch_tab(self):
+        """Configure l'onglet pour lancer le jeu."""
+        # Label principal
+        label = tk.Label(self.launch_tab, text="Welcome to sm64coopdx Launcher!", font=("Arial", 16))
+        label.pack(pady=20)
+
+        # Conteneur pour les widgets en bas
+        bottom_frame = tk.Frame(self.launch_tab)
+        bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
+
+        # Label pour indiquer "Version:" au-dessus de la combobox
+        version_label_text = tk.Label(bottom_frame, text="Version:", font=("Arial", 10))
+        version_label_text.pack(side=tk.LEFT, padx=10)
+
+        # Drop-down list pour les versions installées (en bas à gauche)
+        self.version_combobox = ttk.Combobox(bottom_frame, state="readonly", width=30)
+        self.version_combobox.pack(side=tk.LEFT, padx=10)
+
+        # Conteneur pour le bouton Launch (centré)
+        launch_frame = tk.Frame(self.launch_tab)
+        launch_frame.pack(side=tk.BOTTOM, pady=10)
+
+        # Bouton pour lancer une version (centré)
+        self.launch_button = tk.Button(launch_frame, text="Launch", state=tk.DISABLED, font=("Arial", 12), width=15, command=self.launch_version)
+        self.launch_button.pack(anchor="center")
+
+        # Afficher la version du launcher (en bas à droite)
+        self.version_label = tk.Label(bottom_frame, text=f"v{LAUNCHER_VERSION}", font=("Arial", 10))
+        self.version_label.pack(side=tk.RIGHT, padx=10)
+
+        # Lier la sélection dans la Combobox à l'activation du bouton "Launch"
         self.version_combobox.bind("<<ComboboxSelected>>", self.on_version_select)
+
+    def setup_manage_tab(self):
+        """Configure l'onglet pour gérer les versions."""
+        # Liste des versions installées
+        self.version_listbox = tk.Listbox(self.manage_tab, height=10, width=50)
+        self.version_listbox.pack(pady=10, padx=10)
+
+        # Bouton pour installer une nouvelle version
+        self.install_button = tk.Button(self.manage_tab, text="Install New Version", command=self.download_version)
+        self.install_button.pack(pady=5)
+
+        # Bouton pour supprimer une version (désactivé par défaut)
+        self.delete_button = tk.Button(self.manage_tab, text="Delete Version", state=tk.DISABLED, command=self.delete_version)
+        self.delete_button.pack(pady=5)
+
+        # Bouton pour rafraîchir la liste des versions
+        self.refresh_button = tk.Button(self.manage_tab, text="Refresh Versions", command=self.refresh_versions)
+        self.refresh_button.pack(pady=5)
+
+        # Lier la sélection dans la Listbox à l'activation du bouton "Delete Version"
+        self.version_listbox.bind("<<ListboxSelect>>", self.on_version_list_select)
 
     def refresh_versions(self):
         """Met à jour la liste des versions installées."""
@@ -65,33 +105,47 @@ class AppWindow:
                 if os.path.exists(exe_file):  # Vérifier si le fichier .exe existe
                     versions.append(version)
 
-        # Mettre à jour la Combobox avec les versions trouvées
+        # Mettre à jour la Listbox avec les versions trouvées
+        self.version_listbox.delete(0, tk.END)  # Effacer la liste actuelle
         if versions:
-            self.version_combobox["values"] = versions
-            self.version_combobox.current(0)  # Sélectionner la première version par défaut
-            self.launch_button.config(state=tk.NORMAL)
+            for version in versions:
+                self.version_listbox.insert(tk.END, version)
             self.delete_button.config(state=tk.NORMAL)
         else:
-            # Afficher un message par défaut si aucune version n'est installée
-            self.version_combobox["values"] = ["No versions of sm64coopdx installed"]
-            self.version_combobox.set("No versions of sm64coopdx installed")
-            self.launch_button.config(state=tk.DISABLED)
+            self.version_listbox.insert(tk.END, "No versions installed")
             self.delete_button.config(state=tk.DISABLED)
+
+        # Mettre à jour la Combobox dans l'onglet "Launch Game"
+        self.version_combobox["values"] = versions if versions else ["No versions installed"]
+        if versions:
+            self.version_combobox.current(0)
+            self.launch_button.config(state=tk.NORMAL)
+        else:
+            self.version_combobox.set("No versions installed")
+            self.launch_button.config(state=tk.DISABLED)
 
     def on_version_select(self, event):
         """Active les boutons 'Launch Version' et 'Delete Version' lorsqu'une version est sélectionnée."""
-        if self.version_combobox.get():
+        if self.version_combobox.get() and self.version_combobox.get() != "No versions of sm64coopdx installed":
             self.launch_button.config(state=tk.NORMAL)
             self.delete_button.config(state=tk.NORMAL)
         else:
             self.launch_button.config(state=tk.DISABLED)
+            self.delete_button.config(state=tk.DISABLED)
+
+    def on_version_list_select(self, event):
+        """Active le bouton 'Delete Version' lorsqu'une version est sélectionnée dans la Listbox."""
+        selected_indices = self.version_listbox.curselection()
+        if selected_indices:
+            self.delete_button.config(state=tk.NORMAL)
+        else:
             self.delete_button.config(state=tk.DISABLED)
 
     def launch_version(self):
         """Lance la version sélectionnée en exécutant son fichier .exe."""
         selected_version = self.version_combobox.get()
-        if not selected_version:
-            messagebox.showerror("Error", "Please select a version to launch.")
+        if not selected_version or selected_version == "No versions of sm64coopdx installed":
+            messagebox.showerror("Error", "Please select a valid version to launch.")
             return
 
         # Utiliser le nom fixe "sm64coopdx.exe"
@@ -107,6 +161,8 @@ class AppWindow:
             messagebox.showerror("Error", f"Executable not found for version '{selected_version}'.")
 
     def download_version(self):
+        """Ouvre une fenêtre pour télécharger une nouvelle version."""
+        # Récupérer les versions disponibles depuis GitHub
         releases = GitHubManager.get_releases()
         if not releases:
             messagebox.showerror("Error", "Failed to fetch releases from GitHub.")
@@ -182,90 +238,74 @@ class AppWindow:
             else:
                 download_button.config(state=tk.DISABLED)
 
-        def download_selected_file():
-            """Télécharge le fichier ZIP sélectionné avec une barre de progression."""
-            if not selected_release:
-                messagebox.showerror("Error", "Please select a release.")
-                return
-
+        def download_selected_asset():
+            """Télécharge et installe l'asset sélectionné."""
             selected_asset_index = asset_listbox.curselection()
-            if not selected_asset_index:
-                messagebox.showerror("Error", "Please select a file.")
+            if not selected_release or not selected_asset_index:
+                messagebox.showerror("Error", "Please select a release and a file to download.")
                 return
 
-            # Récupérer les informations du fichier ZIP sélectionné
             selected_asset = selected_release["assets"][selected_asset_index[0]]
             download_url = selected_asset["browser_download_url"]
             file_name = selected_asset["name"]
 
-            # Afficher la barre de progression
-            progress_label.pack(pady=5)
-            progress_bar.pack(pady=5)
+            # Assurez-vous que le dossier 'versions' existe
+            versions_directory = "versions"
+            if not os.path.exists(versions_directory):
+                os.makedirs(versions_directory)
 
-            # Télécharger le fichier avec une barre de progression
-            def perform_download():
-                # Assurez-vous que le dossier 'versions' existe
-                download_directory = "versions"
-                if not os.path.exists(download_directory):
-                    os.makedirs(download_directory)
+            # Chemin complet pour le fichier téléchargé
+            file_path = os.path.join(versions_directory, file_name)
 
-                # Chemin complet pour le fichier téléchargé
-                file_path = os.path.join(download_directory, file_name)
+            try:
+                # Afficher la barre de progression
+                progress_label.pack()
+                progress_bar.pack()
+                progress_bar["value"] = 0
 
+                # Télécharger le fichier
                 response = requests.get(download_url, stream=True)
-                total_size = int(response.headers.get('content-length', 0))
+                response.raise_for_status()
+
+                total_size = int(response.headers.get("content-length", 0))
                 downloaded_size = 0
 
                 with open(file_path, "wb") as file:
                     for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            file.write(chunk)
-                            downloaded_size += len(chunk)
-                            progress = int((downloaded_size / total_size) * 100)
-                            progress_bar["value"] = progress
-                            progress_label.config(text=f"Progress: {progress}%")
-                            selection_window.update_idletasks()
+                        file.write(chunk)
+                        downloaded_size += len(chunk)
+                        progress = int((downloaded_size / total_size) * 100)
+                        progress_bar["value"] = progress
+                        progress_label.config(text=f"Progress: {progress}%")
+                        selection_window.update_idletasks()
 
-                if downloaded_size == total_size:
-                    # Décompresser le fichier ZIP dans un dossier portant le même nom
-                    extract_directory = os.path.join(download_directory, os.path.splitext(file_name)[0])
-                    if not os.path.exists(extract_directory):
-                        os.makedirs(extract_directory)
+                # Décompresser le fichier ZIP
+                extract_directory = os.path.join(versions_directory, os.path.splitext(file_name)[0])
+                with zipfile.ZipFile(file_path, "r") as zip_ref:
+                    zip_ref.extractall(extract_directory)
 
-                    try:
-                        with zipfile.ZipFile(file_path, 'r') as zip_ref:
-                            zip_ref.extractall(extract_directory)
-                        # Supprimer le fichier ZIP après décompression
-                        os.remove(file_path)
-                        messagebox.showinfo("Success", f"File '{file_name}' downloaded, extracted to '{extract_directory}', and deleted!")
-                    except zipfile.BadZipFile:
-                        messagebox.showerror("Error", f"Failed to extract '{file_name}'. The file is not a valid ZIP archive.")
-                else:
-                    messagebox.showerror("Error", f"Failed to download file '{file_name}'.")
+                # Supprimer le fichier ZIP après extraction
+                os.remove(file_path)
 
-                # Fermer la fenêtre de téléchargement
-                selection_window.destroy()
+                messagebox.showinfo("Success", f"Version '{selected_release['name']}' has been installed.")
+                self.refresh_versions()  # Rafraîchir la liste des versions
+                selection_window.destroy()  # Fermer la fenêtre de sélection
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to download or install the version.\n{e}")
 
-                # Rafraîchir la liste des versions
-                self.refresh_versions()
-
-            perform_download()
-
-        # Lier l'événement de sélection à la mise à jour des fichiers ZIP
+        # Lier les événements
         release_listbox.bind("<<ListboxSelect>>", update_assets)
-
-        # Lier l'événement de sélection des fichiers ZIP à l'activation du bouton Download
         asset_listbox.bind("<<ListboxSelect>>", enable_download_button)
-
-        # Associer la fonction de téléchargement au bouton Download
-        download_button.config(command=download_selected_file)
+        download_button.config(command=download_selected_asset)
 
     def delete_version(self):
         """Supprime la version sélectionnée."""
-        selected_version = self.version_combobox.get()
-        if not selected_version:
-            messagebox.showerror("Error", "Please select a version to delete.")
+        selected_indices = self.version_listbox.curselection()
+        if not selected_indices:
+            messagebox.showerror("Error", "Please select a valid version to delete.")
             return
+
+        selected_version = self.version_listbox.get(selected_indices[0])
 
         # Chemin du dossier de la version
         version_path = os.path.join("versions", selected_version)
