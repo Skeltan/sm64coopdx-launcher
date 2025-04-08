@@ -10,11 +10,11 @@ from utils.github_manager import GitHubManager
 class AppWindow:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("SM64CoopDX Launcher")
+        self.root.title("sm64coopdx Launcher")
         self.root.geometry("400x300")
 
         # Add basic UI elements
-        self.label = tk.Label(self.root, text="Welcome to SM64CoopDX Launcher!")
+        self.label = tk.Label(self.root, text="Welcome to sm64coopdx Launcher!")
         self.label.pack(pady=10)
 
         self.download_button = tk.Button(self.root, text="Download Version", command=self.download_version)
