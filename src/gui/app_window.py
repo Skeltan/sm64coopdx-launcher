@@ -31,6 +31,10 @@ class AppWindow:
         self.download_button = tk.Button(self.root, text="Download Version", command=self.download_version)
         self.download_button.pack(pady=5)
 
+        # Bouton pour supprimer une version (désactivé par défaut)
+        self.delete_button = tk.Button(self.root, text="Delete Version", state=tk.DISABLED, command=self.delete_version)
+        self.delete_button.pack(pady=5)
+
         # Bouton pour rafraîchir la liste des versions
         self.refresh_button = tk.Button(self.root, text="Refresh Versions", command=self.refresh_versions)
         self.refresh_button.pack(pady=5)
@@ -42,7 +46,7 @@ class AppWindow:
         # Charger les versions installées au démarrage
         self.refresh_versions()
 
-        # Lier la sélection dans la Combobox à l'activation du bouton "Launch"
+        # Lier la sélection dans la Combobox à l'activation des boutons "Launch" et "Delete"
         self.version_combobox.bind("<<ComboboxSelected>>", self.on_version_select)
 
     def refresh_versions(self):
@@ -71,11 +75,13 @@ class AppWindow:
             self.launch_button.config(state=tk.DISABLED)
 
     def on_version_select(self, event):
-        """Active le bouton 'Launch Version' lorsqu'une version est sélectionnée."""
+        """Active les boutons 'Launch Version' et 'Delete Version' lorsqu'une version est sélectionnée."""
         if self.version_combobox.get():
             self.launch_button.config(state=tk.NORMAL)
+            self.delete_button.config(state=tk.NORMAL)
         else:
             self.launch_button.config(state=tk.DISABLED)
+            self.delete_button.config(state=tk.DISABLED)
 
     def launch_version(self):
         """Lance la version sélectionnée en exécutant son fichier .exe."""
@@ -249,6 +255,31 @@ class AppWindow:
 
         # Associer la fonction de téléchargement au bouton Download
         download_button.config(command=download_selected_file)
+
+    def delete_version(self):
+        """Supprime la version sélectionnée."""
+        selected_version = self.version_combobox.get()
+        if not selected_version:
+            messagebox.showerror("Error", "Please select a version to delete.")
+            return
+
+        # Chemin du dossier de la version
+        version_path = os.path.join("versions", selected_version)
+
+        if os.path.exists(version_path):
+            # Demander confirmation avant de supprimer
+            if messagebox.askyesno("Confirm Deletion", f"Are you sure you want to delete version '{selected_version}'?"):
+                try:
+                    # Supprimer le dossier et son contenu
+                    import shutil
+                    shutil.rmtree(version_path)
+                    messagebox.showinfo("Success", f"Version '{selected_version}' has been deleted.")
+                    # Rafraîchir la liste des versions
+                    self.refresh_versions()
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to delete version '{selected_version}'.\n{e}")
+        else:
+            messagebox.showerror("Error", f"Version '{selected_version}' not found.")
 
     def run(self):
         self.root.mainloop()
