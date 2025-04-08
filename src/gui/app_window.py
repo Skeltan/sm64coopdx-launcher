@@ -82,11 +82,15 @@ class AppWindow:
         self.delete_button = tk.Button(self.manage_tab, text="Delete Version", state=tk.DISABLED, command=self.delete_version)
         self.delete_button.pack(pady=5)
 
+        # Bouton pour renommer une version (désactivé par défaut)
+        self.rename_button = tk.Button(self.manage_tab, text="Rename Version", state=tk.DISABLED, command=self.rename_version)
+        self.rename_button.pack(pady=5)
+
         # Bouton pour rafraîchir la liste des versions
         self.refresh_button = tk.Button(self.manage_tab, text="Refresh Versions", command=self.refresh_versions)
         self.refresh_button.pack(pady=5)
 
-        # Lier la sélection dans la Listbox à l'activation du bouton "Delete Version"
+        # Lier la sélection dans la Listbox à l'activation des boutons "Delete" et "Rename"
         self.version_listbox.bind("<<ListboxSelect>>", self.on_version_list_select)
 
     def refresh_versions(self):
@@ -134,12 +138,14 @@ class AppWindow:
             self.delete_button.config(state=tk.DISABLED)
 
     def on_version_list_select(self, event):
-        """Active le bouton 'Delete Version' lorsqu'une version est sélectionnée dans la Listbox."""
+        """Active les boutons 'Delete Version' et 'Rename Version' lorsqu'une version est sélectionnée dans la Listbox."""
         selected_indices = self.version_listbox.curselection()
         if selected_indices:
             self.delete_button.config(state=tk.NORMAL)
+            self.rename_button.config(state=tk.NORMAL)
         else:
             self.delete_button.config(state=tk.DISABLED)
+            self.rename_button.config(state=tk.DISABLED)
 
     def launch_version(self):
         """Lance la version sélectionnée en exécutant son fichier .exe."""
@@ -170,9 +176,9 @@ class AppWindow:
 
         # Créer une nouvelle fenêtre pour afficher les releases et les fichiers ZIP
         selection_window = tk.Toplevel(self.root)
-        selection_window.title("Select a Release and File")
-        selection_window.geometry("600x600")
-        selection_window.minsize(600, 600)
+        selection_window.title("Install New Version")
+        selection_window.geometry("450x400")
+        selection_window.minsize(450, 400)
 
         # Conteneur principal pour les listes
         list_frame = tk.Frame(selection_window)
@@ -197,13 +203,20 @@ class AppWindow:
         for release in releases:
             release_listbox.insert(tk.END, release["name"])
 
-        # Conteneur pour la barre de progression
+        # Conteneur pour le champ de saisie et la barre de progression
         progress_frame = tk.Frame(selection_window)
         progress_frame.pack(fill=tk.X, pady=10)
 
-        # Barre de progression (initialement cachée)
+        # Champ de saisie pour le nom du fichier
+        tk.Label(progress_frame, text="Custom Name:").pack(side=tk.LEFT, padx=5)
+        version_name_entry = tk.Entry(progress_frame)
+        version_name_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+
+        # Barre de progression
         progress_label = tk.Label(progress_frame, text="Progress: 0%")
-        progress_bar = ttk.Progressbar(progress_frame, orient="horizontal", length=500, mode="determinate")
+        progress_label.pack(side=tk.LEFT, padx=5)
+        progress_bar = ttk.Progressbar(progress_frame, orient="horizontal", length=300, mode="determinate")
+        progress_bar.pack(fill=tk.X, expand=True, padx=5)
 
         # Bouton pour télécharger le fichier sélectionné (désactivé par défaut)
         download_button = tk.Button(selection_window, text="Download", state=tk.DISABLED)
@@ -249,6 +262,11 @@ class AppWindow:
             download_url = selected_asset["browser_download_url"]
             file_name = selected_asset["name"]
 
+            # Récupérer le nom personnalisé de la version
+            custom_name = version_name_entry.get().strip()
+            if not custom_name:
+                custom_name = os.path.splitext(file_name)[0]  # Utiliser le nom par défaut si aucun nom n'est fourni
+
             # Assurez-vous que le dossier 'versions' existe
             versions_directory = "versions"
             if not os.path.exists(versions_directory):
@@ -256,14 +274,10 @@ class AppWindow:
 
             # Chemin complet pour le fichier téléchargé
             file_path = os.path.join(versions_directory, file_name)
+            extract_directory = os.path.join(versions_directory, custom_name)
 
             try:
-                # Afficher la barre de progression
-                progress_label.pack()
-                progress_bar.pack()
-                progress_bar["value"] = 0
-
-                # Télécharger le fichier
+                # Télécharger le fichier avec une barre de progression
                 response = requests.get(download_url, stream=True)
                 response.raise_for_status()
 
@@ -280,14 +294,13 @@ class AppWindow:
                         selection_window.update_idletasks()
 
                 # Décompresser le fichier ZIP
-                extract_directory = os.path.join(versions_directory, os.path.splitext(file_name)[0])
                 with zipfile.ZipFile(file_path, "r") as zip_ref:
                     zip_ref.extractall(extract_directory)
 
                 # Supprimer le fichier ZIP après extraction
                 os.remove(file_path)
 
-                messagebox.showinfo("Success", f"Version '{selected_release['name']}' has been installed.")
+                messagebox.showinfo("Success", f"Version '{custom_name}' has been installed.")
                 self.refresh_versions()  # Rafraîchir la liste des versions
                 selection_window.destroy()  # Fermer la fenêtre de sélection
             except Exception as e:
@@ -324,6 +337,50 @@ class AppWindow:
                     messagebox.showerror("Error", f"Failed to delete version '{selected_version}'.\n{e}")
         else:
             messagebox.showerror("Error", f"Version '{selected_version}' not found.")
+
+    def rename_version(self):
+        """Renomme la version sélectionnée."""
+        selected_indices = self.version_listbox.curselection()
+        if not selected_indices:
+            messagebox.showerror("Error", "Please select a version to rename.")
+            return
+
+        selected_version = self.version_listbox.get(selected_indices[0])
+
+        # Fenêtre pour saisir le nouveau nom
+        rename_window = tk.Toplevel(self.root)
+        rename_window.title("Rename Version")
+        rename_window.geometry("300x150")
+
+        tk.Label(rename_window, text=f"Renaming: {selected_version}").pack(pady=10)
+        tk.Label(rename_window, text="New Name:").pack(pady=5)
+
+        new_name_entry = tk.Entry(rename_window, width=30)
+        new_name_entry.pack(pady=5)
+
+        def confirm_rename():
+            new_name = new_name_entry.get().strip()
+            if not new_name:
+                messagebox.showerror("Error", "New name cannot be empty.")
+                return
+
+            # Chemin actuel et nouveau chemin
+            current_path = os.path.join("versions", selected_version)
+            new_path = os.path.join("versions", new_name)
+
+            if os.path.exists(new_path):
+                messagebox.showerror("Error", f"A version with the name '{new_name}' already exists.")
+                return
+
+            try:
+                os.rename(current_path, new_path)
+                messagebox.showinfo("Success", f"Version '{selected_version}' has been renamed to '{new_name}'.")
+                self.refresh_versions()  # Rafraîchir la liste des versions
+                rename_window.destroy()  # Fermer la fenêtre
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to rename version.\n{e}")
+
+        tk.Button(rename_window, text="Rename", command=confirm_rename).pack(pady=10)
 
     def run(self):
         self.root.mainloop()
