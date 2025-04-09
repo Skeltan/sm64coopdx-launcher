@@ -4,3 +4,12 @@ __pycache__/
 
 # Ignorer le dossier versions et son contenu
 versions/
+
+# Ignorer le fichier .spec à la racine du projet
+/*.spec
+
+# Ignorer le dossier build et son contenu
+build/
+
+# Ignorer le dossier dist et son contenu
+dist/
