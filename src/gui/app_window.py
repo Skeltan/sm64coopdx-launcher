@@ -13,7 +13,7 @@ class AppWindow:
         self.root = tk.Tk()
         self.root.title("sm64coopdx Launcher")
         self.root.geometry("800x600")
-        self.root.minsize(450, 400)
+        self.root.minsize(600, 600)
 
         # Création du Notebook pour les onglets
         notebook = ttk.Notebook(self.root)
@@ -27,11 +27,18 @@ class AppWindow:
         self.manage_tab = tk.Frame(notebook)
         notebook.add(self.manage_tab, text="Manage Versions")
 
+        # Onglet "About"
+        self.about_tab = tk.Frame(notebook)
+        notebook.add(self.about_tab, text="About")
+
         # Contenu de l'onglet "Launch Game"
         self.setup_launch_tab()
 
         # Contenu de l'onglet "Manage Versions"
         self.setup_manage_tab()
+
+        # Contenu de l'onglet "Manage Versions"
+        self.setup_about_tab()
 
         # Charger les versions installées au démarrage
         self.refresh_versions()
@@ -108,6 +115,64 @@ class AppWindow:
 
         # Lier la sélection dans la Listbox à l'activation des boutons "Delete" et "Rename"
         self.version_listbox.bind("<<ListboxSelect>>", self.on_version_list_select)
+
+    def setup_about_tab(self):
+        """Configure l'onglet 'About'."""
+        about_label = tk.Label(self.about_tab, text="About sm64coopdx Launcher", font=("Arial", 16))
+        about_label.pack(pady=20)
+
+        # Afficher une description du launcher
+        description_label = tk.Label(self.about_tab, text="This launcher helps you manage and launch sm64coopdx versions.", font=("Arial", 12))
+        description_label.pack(pady=10)
+
+        # Ajouter un label "Official Links"
+        links_label = tk.Label(
+            self.about_tab,
+            text="Official Links:",
+            font=("Arial", 14, "bold")
+        )
+        links_label.pack(pady=10)
+
+        # Ajouter un lien vers le site officiel
+        site_link_label = tk.Label(
+            self.about_tab,
+            text="Website: sm64coopdx.com",
+            font=("Arial", 12),
+            fg="blue",
+            cursor="hand2"
+        )
+        site_link_label.pack(pady=5)
+        site_link_label.bind("<Button-1>", lambda e: os.system("start https://sm64coopdx.com/"))
+
+        # Ajouter un lien vers le Discord
+        discord_link_label = tk.Label(
+            self.about_tab,
+            text="Discord: Join the community",
+            font=("Arial", 12),
+            fg="blue",
+            cursor="hand2"
+        )
+        discord_link_label.pack(pady=5)
+        discord_link_label.bind("<Button-1>", lambda e: os.system("start https://discord.gg/TJVKHS4"))
+
+        # Ajouter un lien vers le GitHub
+        github_link_label = tk.Label(
+            self.about_tab,
+            text="GitHub: sm64coopdx repository",
+            font=("Arial", 12),
+            fg="blue",
+            cursor="hand2"
+        )
+        github_link_label.pack(pady=5)
+        github_link_label.bind("<Button-1>", lambda e: os.system("start https://github.com/coop-deluxe/sm64coopdx"))
+
+        # Afficher l'auteur du launcher
+        author_label = tk.Label(self.about_tab, text=f"Launcher Author: Skeltan", font=("Arial", 12))
+        author_label.pack(pady=(20, 0))
+
+        # Afficher la version du launcher
+        version_label = tk.Label(self.about_tab, text=f"Launcher Version: {LAUNCHER_VERSION}", font=("Arial", 12))
+        version_label.pack(pady=0)
 
     def refresh_versions(self):
         """Met à jour la liste des versions installées."""
