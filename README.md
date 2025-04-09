@@ -7,9 +7,8 @@ A simple application to launch, manage, download, and remove versions of sm64coo
 ## Features
 
 - Launch installed versions of sm64coopdx.
-- Manage builds: rename, delete, or open version folders.
-- Download new builds directly from GitHub.
-- User-friendly interface with tabs for easy navigation.
+- Manage builds: rename, delete versions you installed
+- Download new builds directly from the official GitHub.
 
 ---
 
