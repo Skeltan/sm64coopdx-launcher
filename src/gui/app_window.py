@@ -23,9 +23,9 @@ class AppWindow:
         self.launch_tab = tk.Frame(notebook)
         notebook.add(self.launch_tab, text="Launch Game")
 
-        # Onglet "Manage Versions"
+        # Onglet "Manage Builds"
         self.manage_tab = tk.Frame(notebook)
-        notebook.add(self.manage_tab, text="Manage Versions")
+        notebook.add(self.manage_tab, text="Manage Builds")
 
         # Onglet "About"
         self.about_tab = tk.Frame(notebook)
@@ -34,10 +34,10 @@ class AppWindow:
         # Contenu de l'onglet "Launch Game"
         self.setup_launch_tab()
 
-        # Contenu de l'onglet "Manage Versions"
+        # Contenu de l'onglet "Manage Builds"
         self.setup_manage_tab()
 
-        # Contenu de l'onglet "Manage Versions"
+        # Contenu de l'onglet "Manage Builds"
         self.setup_about_tab()
 
         # Charger les versions installées au démarrage
@@ -69,12 +69,12 @@ class AppWindow:
         bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
 
         # Label pour indiquer "Version:" au-dessus de la combobox
-        version_label_text = tk.Label(bottom_frame, text="Version:", font=("Arial", 10))
-        version_label_text.pack(side=tk.LEFT, padx=10)
+        version_label_text = tk.Label(bottom_frame, text="Build:", font=("Arial", 10))
+        version_label_text.pack(side=tk.LEFT, padx=(10,0))
 
         # Drop-down list pour les versions installées (en bas à gauche)
         self.version_combobox = ttk.Combobox(bottom_frame, state="readonly", width=30)
-        self.version_combobox.pack(side=tk.LEFT, padx=10)
+        self.version_combobox.pack(side=tk.LEFT, padx=(2, 50), fill=tk.X, expand=True)
 
         # Conteneur pour le bouton Launch (centré)
         launch_frame = tk.Frame(self.launch_tab)
@@ -93,28 +93,78 @@ class AppWindow:
 
     def setup_manage_tab(self):
         """Configure l'onglet pour gérer les versions."""
-        # Liste des versions installées
-        self.version_listbox = tk.Listbox(self.manage_tab, height=10, width=50)
-        self.version_listbox.pack(pady=10, padx=10)
+        # Conteneur principal
+        top_frame = tk.Frame(self.manage_tab)
+        top_frame.pack(fill=tk.X, pady=5)
 
-        # Bouton pour installer une nouvelle version
-        self.install_button = tk.Button(self.manage_tab, text="Install New Version", command=self.download_version)
-        self.install_button.pack(pady=5)
+        # Label "Builds"
+        versions_label = tk.Label(top_frame, text="Builds:", font=("Arial", 14))
+        versions_label.pack(side=tk.LEFT, padx=(20,0))
 
-        # Bouton pour supprimer une version (désactivé par défaut)
-        self.delete_button = tk.Button(self.manage_tab, text="Delete Version", state=tk.DISABLED, command=self.delete_version)
-        self.delete_button.pack(pady=5)
+        # Zone de filtre avec un hint
+        filter_entry = tk.Entry(top_frame, width=30, fg="grey")
+        filter_entry.pack(side=tk.LEFT, padx=5)
+        filter_entry.insert(0, "Filter by name...")
 
-        # Bouton pour renommer une version (désactivé par défaut)
-        self.rename_button = tk.Button(self.manage_tab, text="Rename Version", state=tk.DISABLED, command=self.rename_version)
-        self.rename_button.pack(pady=5)
+        def on_focus_in(event):
+            """Supprime le hint lorsque l'utilisateur clique dans la zone de texte."""
+            if filter_entry.get() == "Filter by name...":
+                filter_entry.delete(0, tk.END)
+                filter_entry.config(fg="black")
 
-        # Bouton pour rafraîchir la liste des versions
-        self.refresh_button = tk.Button(self.manage_tab, text="Refresh Versions", command=self.refresh_versions)
-        self.refresh_button.pack(pady=5)
+        def on_focus_out(event):
+            """Réaffiche le hint si la zone de texte est vide lorsque l'utilisateur clique ailleurs."""
+            if not filter_entry.get():
+                filter_entry.insert(0, "Filter by name...")
+                filter_entry.config(fg="grey")
 
-        # Lier la sélection dans la Listbox à l'activation des boutons "Delete" et "Rename"
-        self.version_listbox.bind("<<ListboxSelect>>", self.on_version_list_select)
+        # Lier les événements focus
+        filter_entry.bind("<FocusIn>", on_focus_in)
+        filter_entry.bind("<FocusOut>", on_focus_out)
+
+        # Boutons
+        rename_button = tk.Button(top_frame, text="Rename", state=tk.DISABLED, command=self.rename_version)
+        rename_button.pack(side=tk.LEFT, padx=5)
+
+        delete_button = tk.Button(top_frame, text="Delete", state=tk.DISABLED, command=self.delete_version)
+        delete_button.pack(side=tk.LEFT, padx=5)
+
+        # Bouton Refresh
+        refresh_button = tk.Button(top_frame, text="Refresh", command=self.refresh_versions)
+        refresh_button.pack(side=tk.LEFT, padx=5)
+
+        # Bouton Install New (collé à droite)
+        install_button = tk.Button(top_frame, text="Install New", command=self.download_version)
+        install_button.pack(side=tk.RIGHT, padx=(5,20))
+
+        # Conteneur pour le tableau avec padding
+        table_frame = tk.Frame(self.manage_tab)
+        table_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)  # Ajout de padding (20px)
+
+        # Tableau pour afficher les versions
+        columns = ("folder_name", "game_version", "renderer")
+        self.version_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
+        self.version_table.heading("folder_name", text="Folder Name")
+        self.version_table.heading("game_version", text="Game Version")
+        self.version_table.heading("renderer", text="Renderer")
+        self.version_table.column("folder_name", width=200)
+        self.version_table.column("game_version", width=100)
+        self.version_table.column("renderer", width=100)
+        self.version_table.pack(fill=tk.BOTH, expand=True)
+
+        # Lier la sélection dans le tableau à l'activation des boutons
+        self.version_table.bind("<<TreeviewSelect>>", lambda e: self.on_version_table_select(rename_button, delete_button, open_folder_button))
+
+        # Conteneur pour les boutons sous le tableau
+        bottom_frame = tk.Frame(self.manage_tab)
+        bottom_frame.pack(fill=tk.X, pady=(0,10))
+
+        # Bouton "Open Version Folder"
+        open_folder_button = tk.Button(bottom_frame, text="Open Version Folder", state=tk.DISABLED, command=self.open_version_folder)
+        open_folder_button.pack(side=tk.LEFT, padx=20)
+
+        # Activer le bouton "Open Version Folder" lorsqu'une version est sélectionnée
+        self.version_table.bind("<<TreeviewSelect>>", lambda e: self.on_version_table_select(rename_button, delete_button, open_folder_button))
 
     def setup_about_tab(self):
         """Configure l'onglet 'About'."""
@@ -181,52 +231,63 @@ class AppWindow:
         if not os.path.exists(versions_directory):
             os.makedirs(versions_directory)
 
+        # Effacer le tableau actuel
+        for row in self.version_table.get_children():
+            self.version_table.delete(row)
+
+        # Effacer les éléments de la combobox
+        self.version_combobox["values"] = []
+
         # Parcourir les sous-dossiers dans "versions"
         versions = []
         for version in os.listdir(versions_directory):
             version_path = os.path.join(versions_directory, version)
             if os.path.isdir(version_path):
-                exe_file = os.path.join(version_path, "sm64coopdx.exe")  # Nom fixe du fichier .exe
-                if os.path.exists(exe_file):  # Vérifier si le fichier .exe existe
-                    versions.append(version)
+                # Lire les variables depuis "variables.txt"
+                variables_file_path = os.path.join(version_path, "launcher_variables")
+                game_version = "Unknown"
+                renderer = "Unknown"
+                if os.path.exists(variables_file_path):
+                    with open(variables_file_path, "r") as variables_file:
+                        for line in variables_file:
+                            key, value = line.strip().split("=", 1)
+                            if key == "game_version":
+                                game_version = value
+                            elif key == "renderer":
+                                renderer = value
 
-        # Mettre à jour la Listbox avec les versions trouvées
-        self.version_listbox.delete(0, tk.END)  # Effacer la liste actuelle
-        if versions:
-            for version in versions:
-                self.version_listbox.insert(tk.END, version)
-            self.delete_button.config(state=tk.NORMAL)
-        else:
-            self.version_listbox.insert(tk.END, "No versions installed")
-            self.delete_button.config(state=tk.DISABLED)
+                # Ajouter la version au tableau
+                self.version_table.insert("", "end", values=(version, game_version, renderer))
 
-        # Mettre à jour la Combobox dans l'onglet "Launch Game"
-        self.version_combobox["values"] = versions if versions else ["No versions installed"]
+                # Ajouter la version à la liste des versions
+                versions.append(version)
+
+        # Mettre à jour la combobox avec les versions disponibles
         if versions:
-            self.version_combobox.current(0)
-            self.launch_button.config(state=tk.NORMAL)
+            self.version_combobox["values"] = versions
+            self.version_combobox.set(versions[0])  # Sélectionner la première version par défaut
         else:
-            self.version_combobox.set("No versions installed")
-            self.launch_button.config(state=tk.DISABLED)
+            self.version_combobox.set("No versions of sm64coopdx installed")
 
     def on_version_select(self, event):
-        """Active les boutons 'Launch Version' et 'Delete Version' lorsqu'une version est sélectionnée."""
-        if self.version_combobox.get() and self.version_combobox.get() != "No versions of sm64coopdx installed":
+        """Handles enabling/disabling buttons based on version selection."""
+        selected_version = self.version_combobox.get()
+        if selected_version and selected_version != "No versions of sm64coopdx installed":
             self.launch_button.config(state=tk.NORMAL)
-            self.delete_button.config(state=tk.NORMAL)
         else:
             self.launch_button.config(state=tk.DISABLED)
-            self.delete_button.config(state=tk.DISABLED)
 
-    def on_version_list_select(self, event):
-        """Active les boutons 'Delete Version' et 'Rename Version' lorsqu'une version est sélectionnée dans la Listbox."""
-        selected_indices = self.version_listbox.curselection()
-        if selected_indices:
-            self.delete_button.config(state=tk.NORMAL)
-            self.rename_button.config(state=tk.NORMAL)
+    def on_version_table_select(self, rename_button, delete_button, open_folder_button):
+        """Active les boutons Rename, Delete et Open Folder lorsqu'une version est sélectionnée."""
+        selected_items = self.version_table.selection()
+        if selected_items:
+            rename_button.config(state=tk.NORMAL)
+            delete_button.config(state=tk.NORMAL)
+            open_folder_button.config(state=tk.NORMAL)
         else:
-            self.delete_button.config(state=tk.DISABLED)
-            self.rename_button.config(state=tk.DISABLED)
+            rename_button.config(state=tk.DISABLED)
+            delete_button.config(state=tk.DISABLED)
+            open_folder_button.config(state=tk.DISABLED)
 
     def launch_version(self):
         """Lance la version sélectionnée en exécutant son fichier .exe."""
@@ -317,9 +378,10 @@ class AppWindow:
             selected_release = releases[selected_index[0]]
             assets = selected_release.get("assets", [])
 
-            # Effacer la liste actuelle et ajouter les nouveaux fichiers ZIP
+            # Effacer la liste actuelle et ajouter les nouveaux fichiers ZIP contenant "Windows"
             asset_listbox.delete(0, tk.END)
-            for asset in assets:
+            filtered_assets = [asset for asset in assets if "windows" in asset["name"].lower()]
+            for asset in filtered_assets:
                 asset_listbox.insert(tk.END, asset["name"])
 
             # Désactiver le bouton Download tant qu'aucun fichier ZIP n'est sélectionné
@@ -339,9 +401,25 @@ class AppWindow:
                 messagebox.showerror("Error", "Please select a release and a file to download.")
                 return
 
-            selected_asset = selected_release["assets"][selected_asset_index[0]]
+            # Récupérer l'asset sélectionné dans la liste filtrée
+            filtered_assets = [asset for asset in selected_release["assets"] if "windows" in asset["name"].lower()]
+            selected_asset = filtered_assets[selected_asset_index[0]]
             download_url = selected_asset["browser_download_url"]
             file_name = selected_asset["name"]
+
+            # Extraire la version du jeu et le renderer à partir du nom de l'asset
+            game_version = "Unknown"
+            renderer = "Unknown"
+            if "_v" in file_name:
+                try:
+                    # Extraire la version
+                    version_part = file_name.split("_v")[1]
+                    game_version = version_part.split("_")[0]  # Prendre la partie avant le prochain "_"
+
+                    # Extraire le renderer (par exemple, "OpenGL" ou "DirectX")
+                    renderer = file_name.split("_")[-1].split(".")[0]  # Prendre la dernière partie avant l'extension
+                except IndexError:
+                    pass
 
             # Récupérer le nom personnalisé de la version
             custom_name = version_name_entry.get().strip()
@@ -378,6 +456,12 @@ class AppWindow:
                 with zipfile.ZipFile(file_path, "r") as zip_ref:
                     zip_ref.extractall(extract_directory)
 
+                # Écrire les variables dans un fichier texte
+                variables_file_path = os.path.join(extract_directory, "launcher_variables")
+                with open(variables_file_path, "w") as variables_file:
+                    variables_file.write(f"game_version={game_version}\n")
+                    variables_file.write(f"renderer={renderer}\n")
+
                 # Supprimer le fichier ZIP après extraction
                 os.remove(file_path)
 
@@ -394,12 +478,13 @@ class AppWindow:
 
     def delete_version(self):
         """Supprime la version sélectionnée."""
-        selected_indices = self.version_listbox.curselection()
-        if not selected_indices:
+        selected_items = self.version_table.selection()
+        if not selected_items:
             messagebox.showerror("Error", "Please select a valid version to delete.")
             return
 
-        selected_version = self.version_listbox.get(selected_indices[0])
+        # Récupérer le nom du dossier de la version sélectionnée
+        selected_version = self.version_table.item(selected_items[0], "values")[0]
 
         # Chemin du dossier de la version
         version_path = os.path.join("versions", selected_version)
@@ -421,12 +506,13 @@ class AppWindow:
 
     def rename_version(self):
         """Renomme la version sélectionnée."""
-        selected_indices = self.version_listbox.curselection()
-        if not selected_indices:
+        selected_items = self.version_table.selection()
+        if not selected_items:
             messagebox.showerror("Error", "Please select a version to rename.")
             return
 
-        selected_version = self.version_listbox.get(selected_indices[0])
+        # Récupérer le nom du dossier de la version sélectionnée
+        selected_version = self.version_table.item(selected_items[0], "values")[0]
 
         # Fenêtre pour saisir le nouveau nom
         rename_window = tk.Toplevel(self.root)
@@ -462,6 +548,27 @@ class AppWindow:
                 messagebox.showerror("Error", f"Failed to rename version.\n{e}")
 
         tk.Button(rename_window, text="Rename", command=confirm_rename).pack(pady=10)
+
+    def open_version_folder(self):
+        """Ouvre le dossier de la version sélectionnée dans l'explorateur de fichiers."""
+        selected_items = self.version_table.selection()
+        if not selected_items:
+            messagebox.showerror("Error", "Please select a version to open its folder.")
+            return
+
+        # Récupérer le nom du dossier de la version sélectionnée
+        selected_version = self.version_table.item(selected_items[0], "values")[0]
+
+        # Chemin du dossier de la version
+        version_path = os.path.join("versions", selected_version)
+
+        if os.path.exists(version_path):
+            try:
+                os.startfile(version_path)  # Ouvrir le dossier dans l'explorateur de fichiers
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to open folder for version '{selected_version}'.\n{e}")
+        else:
+            messagebox.showerror("Error", f"Folder not found for version '{selected_version}'.")
 
     def run(self):
         self.root.mainloop()
