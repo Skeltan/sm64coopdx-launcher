@@ -9,6 +9,13 @@ from config import LAUNCHER_VERSION
 from PIL import Image, ImageTk
 import sys
 
+def get_resource_path(relative_path):
+    """Retourne le chemin absolu d'une ressource, que l'application soit exécutée depuis un exécutable ou le code source."""
+    if hasattr(sys, '_MEIPASS'):
+        # Si l'application est exécutée depuis un exécutable PyInstaller
+        return os.path.join(sys._MEIPASS, relative_path)
+    return os.path.join(relative_path)
+
 class AppWindow:
     def __init__(self):
         self.root = tk.Tk()
@@ -51,12 +58,7 @@ class AppWindow:
         label.pack(pady=20)
 
         # Déterminer le chemin du logo
-        if hasattr(sys, '_MEIPASS'):
-            # Si l'application est exécutée depuis un exécutable PyInstaller
-            logo_path = os.path.join(sys._MEIPASS, "res", "img", "logo.png")
-        else:
-            # Si l'application est exécutée depuis le script source
-            logo_path = os.path.join("res", "img", "logo.png")
+        logo_path = get_resource_path(os.path.join("src", "res", "img", "logo.png"))
 
         # Charger et redimensionner le logo avec Pillow
         if os.path.exists(logo_path):
