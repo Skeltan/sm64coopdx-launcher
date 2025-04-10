@@ -189,12 +189,12 @@ class AppWindow:
         # Tableau pour afficher les builds
         columns = ("folder_name", "game_version", "renderer")
         self.version_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
-        self.version_table.heading("folder_name", text="Folder Name")
+        self.version_table.heading("folder_name", text="Build Name")
         self.version_table.heading("game_version", text="Game Version")
         self.version_table.heading("renderer", text="Renderer")
-        self.version_table.column("folder_name", width=200)
-        self.version_table.column("game_version", width=100)
-        self.version_table.column("renderer", width=100)
+        self.version_table.column("folder_name", width=500)
+        self.version_table.column("game_version", width=50)
+        self.version_table.column("renderer", width=50)
         self.version_table.pack(fill=tk.BOTH, expand=True)
 
         # Lier la sélection dans le tableau à l'activation des boutons
@@ -204,11 +204,11 @@ class AppWindow:
         bottom_frame = tk.Frame(self.manage_tab)
         bottom_frame.pack(fill=tk.X, pady=(0,10))
 
-        # Bouton "Open Version Folder"
-        open_folder_button = tk.Button(bottom_frame, text="Open Version Folder", state=tk.DISABLED, command=self.open_version_folder)
+        # Bouton "Open Build Folder"
+        open_folder_button = tk.Button(bottom_frame, text="Open Build Folder", state=tk.DISABLED, command=self.open_version_folder)
         open_folder_button.pack(side=tk.LEFT, padx=20)
 
-        # Activer le bouton "Open Version Folder" lorsqu'une version est sélectionnée
+        # Activer le bouton "Open Build Folder" lorsqu'une version est sélectionnée
         self.version_table.bind("<<TreeviewSelect>>", lambda e: self.on_version_table_select(rename_button, delete_button, open_folder_button))
 
     def setup_about_tab(self):
@@ -363,8 +363,8 @@ class AppWindow:
 
         # Créer une nouvelle fenêtre pour afficher les releases et les fichiers ZIP
         selection_window = tk.Toplevel(self.root)
-        selection_window.title("Install New Version")
-        selection_window.geometry("450x400")
+        selection_window.title("Install New Build")
+        selection_window.geometry("600x450")
         selection_window.minsize(450, 400)
         selection_window.resizable(False, False)  # Empêche le redimensionnement
 
@@ -396,13 +396,13 @@ class AppWindow:
         progress_frame.pack(fill=tk.X, pady=10)
 
         # Champ de saisie pour le nom du fichier
-        tk.Label(progress_frame, text="Custom Name:").pack(side=tk.LEFT, padx=5)
+        tk.Label(progress_frame, text="Custom Name:").pack(anchor="w", padx=5)
         version_name_entry = tk.Entry(progress_frame)
-        version_name_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        version_name_entry.pack(fill=tk.X, expand=True, padx=5, pady=(0, 10))
 
         # Barre de progression
         progress_label = tk.Label(progress_frame, text="Progress: 0%")
-        progress_label.pack(side=tk.LEFT, padx=5)
+        progress_label.pack(anchor="w", padx=5)
         progress_bar = ttk.Progressbar(progress_frame, orient="horizontal", length=300, mode="determinate")
         progress_bar.pack(fill=tk.X, expand=True, padx=5)
 
@@ -511,7 +511,7 @@ class AppWindow:
                 # Supprimer le fichier ZIP après extraction
                 os.remove(file_path)
 
-                messagebox.showinfo("Success", f"Version '{custom_name}' has been installed.")
+                messagebox.showinfo("Success", f"Build '{custom_name}' has been installed.")
                 self.refresh_versions()  # Rafraîchir la liste des builds
                 selection_window.destroy()  # Fermer la fenêtre de sélection
             except Exception as e:
@@ -542,13 +542,13 @@ class AppWindow:
                     # Supprimer le dossier et son contenu
                     import shutil
                     shutil.rmtree(version_path)
-                    messagebox.showinfo("Success", f"Version '{selected_version}' has been deleted.")
+                    messagebox.showinfo("Success", f"Build '{selected_version}' has been deleted.")
                     # Rafraîchir la liste des builds
                     self.refresh_versions()
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to delete version '{selected_version}'.\n{e}")
         else:
-            messagebox.showerror("Error", f"Version '{selected_version}' not found.")
+            messagebox.showerror("Error", f"Build '{selected_version}' not found.")
 
     def rename_version(self):
         """Renomme la version sélectionnée."""
@@ -562,15 +562,15 @@ class AppWindow:
 
         # Fenêtre pour saisir le nouveau nom
         rename_window = tk.Toplevel(self.root)
-        rename_window.title("Rename Version")
-        rename_window.geometry("300x150")
+        rename_window.title("Rename Build")
+        rename_window.geometry("500x150")
         rename_window.resizable(False, False)  # Empêche le redimensionnement
 
         tk.Label(rename_window, text=f"Renaming: {selected_version}").pack(pady=10)
         tk.Label(rename_window, text="New Name:").pack(pady=5)
 
         new_name_entry = tk.Entry(rename_window, width=30)
-        new_name_entry.pack(pady=5)
+        new_name_entry.pack(fill=tk.X, padx=10, pady=5)
 
         def confirm_rename():
             new_name = new_name_entry.get().strip()
@@ -588,7 +588,7 @@ class AppWindow:
 
             try:
                 os.rename(current_path, new_path)
-                messagebox.showinfo("Success", f"Version '{selected_version}' has been renamed to '{new_name}'.")
+                messagebox.showinfo("Success", f"Build '{selected_version}' has been renamed to '{new_name}'.")
                 self.refresh_versions()  # Rafraîchir la liste des builds
                 rename_window.destroy()  # Fermer la fenêtre
             except Exception as e:

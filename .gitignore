@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 
 # Ignorer le dossier versions et son contenu
-versions/
+builds/
 
 # Ignorer le fichier .spec à la racine du projet
 /*.spec
