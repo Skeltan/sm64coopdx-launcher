@@ -8,6 +8,8 @@ from utils.github_manager import GitHubManager
 from config import LAUNCHER_VERSION
 from PIL import Image, ImageTk
 import sys
+import markdown
+from tkhtmlview import HTMLLabel
 
 def get_resource_path(relative_path):
     """Retourne le chemin absolu d'une ressource, que l'application soit exécutée depuis un exécutable ou le code source."""
@@ -21,7 +23,7 @@ class AppWindow:
         self.root = tk.Tk()
         self.root.title("sm64coopdx Launcher")
         self.root.geometry("800x600")
-        self.root.minsize(600, 600)
+        self.root.resizable(False, False)  # Empêche le redimensionnement
 
         # Création du Notebook pour les onglets
         notebook = ttk.Notebook(self.root)
@@ -48,61 +50,94 @@ class AppWindow:
         # Contenu de l'onglet "Manage Builds"
         self.setup_about_tab()
 
-        # Charger les versions installées au démarrage
+        # Charger les builds installées au démarrage
         self.refresh_versions()
 
     def setup_launch_tab(self):
-        """Configure l'onglet pour lancer le jeu."""
-        # Label principal
-        label = tk.Label(self.launch_tab, text="Welcome to sm64coopdx Launcher!", font=("Arial", 16))
-        label.pack(pady=20)
+        """Configure l'onglet pour lancer le jeu avec une disposition en trois parties horizontales."""
+        # Conteneur principal
+        main_frame = tk.Frame(self.launch_tab)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Déterminer le chemin du logo
-        logo_path = get_resource_path(os.path.join("src", "res", "img", "logo.png"))
+        # Partie supérieure : Titre et version du launcher
+        top_frame = tk.Frame(main_frame)
+        top_frame.pack(fill=tk.X, pady=(0, 10))
 
-        # Charger et redimensionner le logo avec Pillow
-        if os.path.exists(logo_path):
-            try:
-                pil_image = Image.open(logo_path)
-                resized_image = pil_image.resize((512, 256), Image.Resampling.LANCZOS)
-                self.logo_image = ImageTk.PhotoImage(resized_image)
-                logo_label = tk.Label(self.launch_tab, image=self.logo_image)
-                logo_label.pack(pady=10)
-            except Exception as e:
-                print(f"Error loading logo: {e}")
-                messagebox.showerror("Error", f"Failed to load the logo image.\nDetails: {e}")
-        else:
-            messagebox.showerror("Error", f"Logo file not found: {logo_path}")
+        # Titre principal
+        title_label = tk.Label(
+            top_frame,
+            text="Welcome to sm64coopdx Launcher!",
+            font=("Arial", 16, "bold"),
+            anchor="center"
+        )
+        title_label.pack()
 
-        # Conteneur pour les widgets en bas
-        bottom_frame = tk.Frame(self.launch_tab)
-        bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
+        # Version du launcher
+        version_label = tk.Label(
+            top_frame,
+            text=f"Launcher Version: v{LAUNCHER_VERSION}",
+            font=("Arial", 10),
+            anchor="center"
+        )
+        version_label.pack()
 
-        # Label pour indiquer "Version:" au-dessus de la combobox
-        version_label_text = tk.Label(bottom_frame, text="Build:", font=("Arial", 10))
-        version_label_text.pack(side=tk.LEFT, padx=(10,0))
+        # Partie centrale : Sélecteur de version et bouton Launch
+        middle_frame = tk.Frame(main_frame)
+        middle_frame.pack(fill=tk.X, pady=(0, 10))
 
-        # Drop-down list pour les versions installées (en bas à gauche)
-        self.version_combobox = ttk.Combobox(bottom_frame, state="readonly", width=30)
-        self.version_combobox.pack(side=tk.LEFT, padx=(2, 50), fill=tk.X, expand=True)
+        # Label pour indiquer "Build:"
+        version_label_text = tk.Label(middle_frame, text="Select a build:", font=("Arial", 12))
+        version_label_text.pack(anchor="w", pady=(0, 5))
 
-        # Conteneur pour le bouton Launch (centré)
-        launch_frame = tk.Frame(self.launch_tab)
-        launch_frame.pack(side=tk.BOTTOM, pady=10)
+        # Drop-down list pour les builds installées
+        self.version_combobox = ttk.Combobox(middle_frame, state="readonly", width=30)
+        self.version_combobox.pack(side=tk.LEFT, padx=(0, 10), fill=tk.X, expand=True)
 
-        # Bouton pour lancer une version (centré)
-        self.launch_button = tk.Button(launch_frame, text="Launch", state=tk.DISABLED, font=("Arial", 12), width=15, command=self.launch_version)
-        self.launch_button.pack(anchor="center")
-
-        # Afficher la version du launcher (en bas à droite)
-        self.version_label = tk.Label(bottom_frame, text=f"v{LAUNCHER_VERSION}", font=("Arial", 10))
-        self.version_label.pack(side=tk.RIGHT, padx=10)
+        # Bouton pour lancer une version
+        self.launch_button = tk.Button(
+            middle_frame,
+            text="Launch",
+            state=tk.DISABLED,
+            font=("Arial", 12),
+            width=15
+        )
+        self.launch_button.pack(side=tk.LEFT)
 
         # Lier la sélection dans la Combobox à l'activation du bouton "Launch"
         self.version_combobox.bind("<<ComboboxSelected>>", self.on_version_select)
 
+        # Partie inférieure : Changelog avec barre de défilement
+        bottom_frame = tk.Frame(main_frame)
+        bottom_frame.pack(fill=tk.BOTH, expand=True, pady=(10, 0))
+
+        # Titre pour le changelog
+        changelog_label = tk.Label(bottom_frame, text="Latest Release:", font=("Arial", 14, "bold"))
+        changelog_label.pack(anchor="w", pady=(0, 10))
+
+        # Conteneur pour le changelog et la scrollbar
+        changelog_container = tk.Frame(bottom_frame)
+        changelog_container.pack(fill=tk.BOTH, expand=True)
+
+        # Scrollbar verticale
+        changelog_scrollbar = tk.Scrollbar(changelog_container, orient=tk.VERTICAL)
+        changelog_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Zone de texte pour afficher le changelog
+        self.changelog_text = HTMLLabel(changelog_container, html="<p>Loading...</p>")
+        self.changelog_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Configurer la scrollbar pour qu'elle défile avec le contenu
+        self.changelog_text.configure(yscrollcommand=changelog_scrollbar.set)
+        changelog_scrollbar.config(command=self.changelog_text.yview)
+
+        # Lier la molette de la souris au défilement
+        self.changelog_text.bind("<MouseWheel>", self._on_mousewheel)  # Windows
+
+        # Charger le changelog depuis GitHub
+        self.load_changelog()
+
     def setup_manage_tab(self):
-        """Configure l'onglet pour gérer les versions."""
+        """Configure l'onglet pour gérer les builds."""
         # Conteneur principal
         top_frame = tk.Frame(self.manage_tab)
         top_frame.pack(fill=tk.X, pady=5)
@@ -151,7 +186,7 @@ class AppWindow:
         table_frame = tk.Frame(self.manage_tab)
         table_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=5)  # Ajout de padding (20px)
 
-        # Tableau pour afficher les versions
+        # Tableau pour afficher les builds
         columns = ("folder_name", "game_version", "renderer")
         self.version_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
         self.version_table.heading("folder_name", text="Folder Name")
@@ -182,7 +217,7 @@ class AppWindow:
         about_label.pack(pady=20)
 
         # Afficher une description du launcher
-        description_label = tk.Label(self.about_tab, text="This launcher helps you manage and launch sm64coopdx versions.", font=("Arial", 12))
+        description_label = tk.Label(self.about_tab, text="This launcher helps you manage and launch sm64coopdx builds.", font=("Arial", 12))
         description_label.pack(pady=10)
 
         # Ajouter un label "Official Links"
@@ -235,8 +270,8 @@ class AppWindow:
         version_label.pack(pady=0)
 
     def refresh_versions(self):
-        """Met à jour la liste des versions installées."""
-        versions_directory = "versions"
+        """Met à jour la liste des builds installées."""
+        versions_directory = "builds"
 
         if not os.path.exists(versions_directory):
             os.makedirs(versions_directory)
@@ -248,8 +283,8 @@ class AppWindow:
         # Effacer les éléments de la combobox
         self.version_combobox["values"] = []
 
-        # Parcourir les sous-dossiers dans "versions"
-        versions = []
+        # Parcourir les sous-dossiers dans "builds"
+        builds = []
         for version in os.listdir(versions_directory):
             version_path = os.path.join(versions_directory, version)
             if os.path.isdir(version_path):
@@ -269,20 +304,20 @@ class AppWindow:
                 # Ajouter la version au tableau
                 self.version_table.insert("", "end", values=(version, game_version, renderer))
 
-                # Ajouter la version à la liste des versions
-                versions.append(version)
+                # Ajouter la version à la liste des builds
+                builds.append(version)
 
-        # Mettre à jour la combobox avec les versions disponibles
-        if versions:
-            self.version_combobox["values"] = versions
-            self.version_combobox.set(versions[0])  # Sélectionner la première version par défaut
+        # Mettre à jour la combobox avec les builds disponibles
+        if builds:
+            self.version_combobox["values"] = builds
+            self.version_combobox.set(builds[0])  # Sélectionner la première version par défaut
         else:
-            self.version_combobox.set("No versions of sm64coopdx installed")
+            self.version_combobox.set("No builds of sm64coopdx installed")
 
     def on_version_select(self, event):
         """Handles enabling/disabling buttons based on version selection."""
         selected_version = self.version_combobox.get()
-        if selected_version and selected_version != "No versions of sm64coopdx installed":
+        if selected_version and selected_version != "No builds of sm64coopdx installed":
             self.launch_button.config(state=tk.NORMAL)
         else:
             self.launch_button.config(state=tk.DISABLED)
@@ -302,12 +337,12 @@ class AppWindow:
     def launch_version(self):
         """Lance la version sélectionnée en exécutant son fichier .exe."""
         selected_version = self.version_combobox.get()
-        if not selected_version or selected_version == "No versions of sm64coopdx installed":
+        if not selected_version or selected_version == "No builds of sm64coopdx installed":
             messagebox.showerror("Error", "Please select a valid version to launch.")
             return
 
         # Utiliser le nom fixe "sm64coopdx.exe"
-        exe_path = os.path.join("versions", selected_version, "sm64coopdx.exe")
+        exe_path = os.path.join("builds", selected_version, "sm64coopdx.exe")
 
         if os.path.exists(exe_path):
             try:
@@ -320,7 +355,7 @@ class AppWindow:
 
     def download_version(self):
         """Ouvre une fenêtre pour télécharger une nouvelle version."""
-        # Récupérer les versions disponibles depuis GitHub
+        # Récupérer les builds disponibles depuis GitHub
         releases = GitHubManager.get_releases()
         if not releases:
             messagebox.showerror("Error", "Failed to fetch releases from GitHub.")
@@ -331,6 +366,7 @@ class AppWindow:
         selection_window.title("Install New Version")
         selection_window.geometry("450x400")
         selection_window.minsize(450, 400)
+        selection_window.resizable(False, False)  # Empêche le redimensionnement
 
         # Conteneur principal pour les listes
         list_frame = tk.Frame(selection_window)
@@ -436,8 +472,8 @@ class AppWindow:
             if not custom_name:
                 custom_name = os.path.splitext(file_name)[0]  # Utiliser le nom par défaut si aucun nom n'est fourni
 
-            # Assurez-vous que le dossier 'versions' existe
-            versions_directory = "versions"
+            # Assurez-vous que le dossier 'builds' existe
+            versions_directory = "builds"
             if not os.path.exists(versions_directory):
                 os.makedirs(versions_directory)
 
@@ -476,7 +512,7 @@ class AppWindow:
                 os.remove(file_path)
 
                 messagebox.showinfo("Success", f"Version '{custom_name}' has been installed.")
-                self.refresh_versions()  # Rafraîchir la liste des versions
+                self.refresh_versions()  # Rafraîchir la liste des builds
                 selection_window.destroy()  # Fermer la fenêtre de sélection
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to download or install the version.\n{e}")
@@ -497,7 +533,7 @@ class AppWindow:
         selected_version = self.version_table.item(selected_items[0], "values")[0]
 
         # Chemin du dossier de la version
-        version_path = os.path.join("versions", selected_version)
+        version_path = os.path.join("builds", selected_version)
 
         if os.path.exists(version_path):
             # Demander confirmation avant de supprimer
@@ -507,7 +543,7 @@ class AppWindow:
                     import shutil
                     shutil.rmtree(version_path)
                     messagebox.showinfo("Success", f"Version '{selected_version}' has been deleted.")
-                    # Rafraîchir la liste des versions
+                    # Rafraîchir la liste des builds
                     self.refresh_versions()
                 except Exception as e:
                     messagebox.showerror("Error", f"Failed to delete version '{selected_version}'.\n{e}")
@@ -528,6 +564,7 @@ class AppWindow:
         rename_window = tk.Toplevel(self.root)
         rename_window.title("Rename Version")
         rename_window.geometry("300x150")
+        rename_window.resizable(False, False)  # Empêche le redimensionnement
 
         tk.Label(rename_window, text=f"Renaming: {selected_version}").pack(pady=10)
         tk.Label(rename_window, text="New Name:").pack(pady=5)
@@ -542,8 +579,8 @@ class AppWindow:
                 return
 
             # Chemin actuel et nouveau chemin
-            current_path = os.path.join("versions", selected_version)
-            new_path = os.path.join("versions", new_name)
+            current_path = os.path.join("builds", selected_version)
+            new_path = os.path.join("builds", new_name)
 
             if os.path.exists(new_path):
                 messagebox.showerror("Error", f"A version with the name '{new_name}' already exists.")
@@ -552,7 +589,7 @@ class AppWindow:
             try:
                 os.rename(current_path, new_path)
                 messagebox.showinfo("Success", f"Version '{selected_version}' has been renamed to '{new_name}'.")
-                self.refresh_versions()  # Rafraîchir la liste des versions
+                self.refresh_versions()  # Rafraîchir la liste des builds
                 rename_window.destroy()  # Fermer la fenêtre
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to rename version.\n{e}")
@@ -570,7 +607,7 @@ class AppWindow:
         selected_version = self.version_table.item(selected_items[0], "values")[0]
 
         # Chemin du dossier de la version
-        version_path = os.path.join("versions", selected_version)
+        version_path = os.path.join("builds", selected_version)
 
         if os.path.exists(version_path):
             try:
@@ -579,6 +616,49 @@ class AppWindow:
                 messagebox.showerror("Error", f"Failed to open folder for version '{selected_version}'.\n{e}")
         else:
             messagebox.showerror("Error", f"Folder not found for version '{selected_version}'.")
+
+    def load_changelog(self):
+        """Charge le changelog de la dernière version disponible sur GitHub et applique les styles directement dans les balises HTML."""
+        try:
+            # URL de la dernière release
+            url = "https://api.github.com/repos/coop-deluxe/sm64coopdx/releases/latest"
+            
+            # Effectuer une requête GET pour récupérer les données de la dernière release
+            response = requests.get(url)
+            response.raise_for_status()  # Vérifie si la requête a réussi
+            
+            # Extraire le contenu JSON de la réponse
+            latest_release = response.json()
+            changelog_markdown = latest_release.get("body", "No changelog available.")
+            
+            # Convertir le Markdown en HTML
+            changelog_html = markdown.markdown(changelog_markdown)
+            
+            # Injecter les styles directement dans les balises HTML
+            styled_html = changelog_html.replace(
+                "<h1>", '<h1 style="font-size: 150%; font-family: Arial, sans-serif;">'
+            ).replace(
+                "<h2>", '<h2 style="font-size: 125%; font-family: Arial, sans-serif;">'
+            ).replace(
+                "<h3>", '<h3 style="font-size: 110%; font-family: Arial, sans-serif;">'
+            ).replace(
+                "<p>", '<p style="font-size: 70%; font-family: Arial, sans-serif;">'
+            ).replace(
+                "<li>", '<li style="font-size: 70%; font-family: Arial, sans-serif;">'
+            )
+            
+            # Afficher le changelog dans le widget HTMLLabel
+            self.changelog_text.set_html(styled_html)
+        except Exception as e:
+            # Afficher un message d'erreur si le changelog ne peut pas être chargé
+            self.changelog_text.set_html(f"<p>Failed to load changelog.<br>Error: {e}</p>")
+
+    def _on_mousewheel(self, event):
+        """Gère le défilement de la molette de la souris pour le widget changelog."""
+        if event.num == 5 or event.delta == -120:
+            self.changelog_text.yview_scroll(1, "units")
+        elif event.num == 4 or event.delta == 120:
+            self.changelog_text.yview_scroll(-1, "units")
 
     def run(self):
         self.root.mainloop()

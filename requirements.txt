@@ -1,3 +1,5 @@
 tkinter
 requests
 pillow
+markdown
+tkhtmlview
